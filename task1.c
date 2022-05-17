@@ -55,6 +55,7 @@
  * 
  **/
 
+
 //#define UART_BASE    (0xFC000000UL)
 //#define UART         ((UART_HANDLE*)UART_BASE)
 // Baud Rate Register masks
@@ -62,11 +63,15 @@
 #define BRR_PARITY_MASK        0x0030
 #define BRR_HW_FLOW_CTRL_MASK  0x0100
 #define BRR_STOP_BITS_MASK     0xF000
+
+#define ENABLE_HW_FLOW_CTRL          8
+#define ENABLE                       1
+#define DISABLE                      0
 // Data structure containing UART parameters including base address and other settings.
 typedef struct UART_HANDLE
 {
   uint32_t reserved;    // Offset: 0x00
-  uint32_t BRR;          // Offset: 0x04
+  uint32_t BRR;         // Offset: 0x04
   uint32_t TER;         // Offset: 0x08
   uint32_t RER;         // Offset: 0xC
   uint32_t IER;         // Offset: 0x10
@@ -87,6 +92,8 @@ typedef enum
    BAUD_115200 = 115200,     //  6
    BAUD_128000 = 128000,     //  7
    BAUD_256000 = 256000,     //  8
+   // Defining actual values instead of register values
+   // to make set_baud_rate(h, val); easier
 }Baud_Rate;
 
 typedef struct
@@ -99,13 +106,15 @@ _BaudTable BaudTable[2] =
 {
   {4800, 0},
   {115200, 6}
+  // This would enable addition of allowable baud rates
+  // Easier debugging wrt bit settings of each baud rate
 };
 
 typedef enum
 {
-  PARITY_EVEN = 0x00,      //  0
-  PARITY_ODD  = 0x10,       //  1
-  PARITY_NONE = 0x20,        //  2
+  PARITY_EVEN = 0x0000,      //  0
+  PARITY_ODD  = 0x0010,      //  1
+  PARITY_NONE = 0x0020,      //  2
 }Parity;
 
 void set_baud_rate(UART_HANDLE *h, uint32_t baud)
@@ -127,6 +136,20 @@ void set_parity(UART_HANDLE *h, uint8_t parity)
   h->BRR &= (~BRR_PARITY_MASK);
   h->BRR |= (parity);
 }
+
+void enable_hw_flow_control(UART_HANDLE *h, uint8_t enable)
+{
+  h->BRR &= (~BRR_HW_FLOW_CTRL_MASK);
+  h->BRR |= ((uint32_t)enable << ENABLE_HW_FLOW_CTRL);
+  // Typecasting to uint32 instead of passing a uint32
+}
+
+void print_uart_registers(UART_HANDLE *h)
+{
+  printf("\nBRR = 0x%x", h->BRR);
+}
+
+
 // Memory Operations, stubs for transcations on embedded platform
 // but route memory operations to a dummy UART buffer for unit-testing
 
@@ -147,11 +170,7 @@ void init_uart(UART_HANDLE *h)
   h->BRR = 0;
   set_baud_rate(h, BAUD_115200);
   set_parity(h, PARITY_NONE);
-}
-
-void print_uart_registers(UART_HANDLE *h)
-{
-  printf("\nBRR = 0x%x", h->BRR);
+  enable_hw_flow_control(h, ENABLE);
 }
 
 // Provide a test case for uart initialization function above
