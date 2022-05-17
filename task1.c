@@ -6,8 +6,8 @@
  * You have to write a initialization routine for a UART device. The UART is a memmory
  * mapped device at the address 0xFC000000 on an embedded platform.
  * This peripheral is controlled by the following 32 bit registers (offsets given)
-
- * BRR: Baud rate register Offset: 0x4
+ 
+ * BRR: Baud rate register Offset: 0x4 
  * BRR[0:3] Selects the baud rate as follows
  *  - 0: 4800
  *  - 1: 9600
@@ -33,7 +33,7 @@
  *
  * RER: Receive  enabel register Offset: 0xC
  * - Bits 3 and 5 notify overrun and framing error and need to be cleared upon reset
- *
+ * 
  * IER: Interrupt enable register Offset: 0x10
  * - Bit 14 and 15 enable TX and RX interrupts
  *
@@ -48,47 +48,51 @@
  *
  * Baud Rate: 38400, stop bits 1, parity none, flow control none
  * TX and RX are interrupt based operations, with data registers cleared at the start of operation.
- *
+ * 
  * You also need to supply a test case by constructing a dummy UART device which will receive memory operations
  * directed for the actual hardware device. This structure should be used to validate correct configuration of
  * UART. Your test program should be runable on a GNU/Linux PC.
- *
+ * 
  **/
 
- //#define UART_BASE    (0xFC000000UL)
-void* UART_BASE;
-
+//#define UART_BASE    (0xFC000000UL)
+//#define UART         ((UART_HANDLE*)UART_BASE)
+// Baud Rate Register masks
+#define BRR_BAUD_RATE_MASK     0x000F
+#define BRR_PARITY_MASK        0x0030
+#define BRR_HW_FLOW_CTRL_MASK  0x0100
+#define BRR_STOP_BITS_MASK     0xF000
 // Data structure containing UART parameters including base address and other settings.
 typedef struct UART_HANDLE
 {
-	uint32_t reserved;    // Offset: 0x00
-	uint32_t BRR;          // Offset: 0x04
-	uint32_t TER;         // Offset: 0x08
-	uint32_t RER;         // Offset: 0xC
-	uint32_t IER;         // Offset: 0x10
-	uint32_t TDR;         // Offset: 0x14
-	uint32_t RDR;         // Offset: 0x18
+  uint32_t reserved;    // Offset: 0x00
+  uint32_t BRR;          // Offset: 0x04
+  uint32_t TER;         // Offset: 0x08
+  uint32_t RER;         // Offset: 0xC
+  uint32_t IER;         // Offset: 0x10
+  uint32_t TDR;         // Offset: 0x14
+  uint32_t RDR;         // Offset: 0x18
 }UART_HANDLE;
 
-#define UART         ((UART_HANDLE*)UART_BASE)
+
 
 typedef enum
 {
-	BAUD_4800 = 4800,       //  0
-	BAUD_9600 = 9600,       //  1
-	BAUD_14400 = 14400,      //  2
-	BAUD_19200 = 19200,      //  3
-	BAUD_38400 = 38400,      //  4
-	BAUD_57600 = 57600,      //  5
-	BAUD_115200 = 115200,     //  6
-	BAUD_128000 = 128000,     //  7
-	BAUD_256000 = 256000,     //  8
+   BAUD_4800   = 4800,       //  0
+   BAUD_9600   = 9600,       //  1
+   BAUD_14400  = 14400,      //  2
+   BAUD_19200  = 19200,      //  3
+   BAUD_38400  = 38400,      //  4
+   BAUD_57600  = 57600,      //  5
+   BAUD_115200 = 115200,     //  6
+   BAUD_128000 = 128000,     //  7
+   BAUD_256000 = 256000,     //  8
 }Baud_Rate;
 
 typedef struct
 {
-	uint32_t rate;
-	uint8_t mask;
+  uint32_t rate;
+  uint8_t mask;
 }_BaudTable;
 
 _BaudTable BaudTable[2] =
@@ -99,55 +103,62 @@ _BaudTable BaudTable[2] =
 
 typedef enum
 {
-	Even_Parity,      //  0
-	Odd_Parity,       //  1
-	No_Parity,        //  2
+  PARITY_EVEN = 0x00,      //  0
+  PARITY_ODD  = 0x10,       //  1
+  PARITY_NONE = 0x20,        //  2
 }Parity;
 
-void set_baud_rate(UART_HANDLE* h, uint32_t baud)
+void set_baud_rate(UART_HANDLE *h, uint32_t baud)
 {
-	uint8_t mask;
-	for (int i = 0; BaudTable[i].rate != 0; i++)
-	{
-		if (baud == BaudTable[i].rate)
-		{
-			mask = BaudTable[i].mask;
-		}
-	}
-	h->BRR &= 0xFFF0;
-	h->BRR |= mask;
+  uint8_t mask;
+  for(int i = 0; BaudTable[i].rate != 0;i++)
+  {
+    if(baud == BaudTable[i].rate)
+    {
+      mask = BaudTable[i].mask;
+    }
+  }
+  h->BRR &= (~BRR_BAUD_RATE_MASK);
+  h->BRR |= mask;
+}
+
+void set_parity(UART_HANDLE *h, uint8_t parity)
+{
+  h->BRR &= (~BRR_PARITY_MASK);
+  h->BRR |= (parity);
 }
 // Memory Operations, stubs for transcations on embedded platform
 // but route memory operations to a dummy UART buffer for unit-testing
 
-uint32_t stub_memread(uint32_t* mem_addr)
+uint32_t stub_memread(uint32_t *mem_addr)
 {
 
 }
 
 
-void stub_memwrite(uint32_t* mem_addr, uint32_t val)
+void stub_memwrite(uint32_t *mem_addr, uint32_t val)
 {
 
 }
 
 // Fill this function
-void init_uart(UART_HANDLE* h)
+void init_uart(UART_HANDLE *h)
 {
-	h->BRR = 0;
-	set_baud_rate(h, BAUD_115200);
+  h->BRR = 0;
+  set_baud_rate(h, BAUD_115200);
+  set_parity(h, PARITY_NONE);
 }
 
-void print_uart_registers(UART_HANDLE* h)
+void print_uart_registers(UART_HANDLE *h)
 {
-	printf("\nBRR = %d", h->BRR);
+  printf("\nBRR = 0x%x", h->BRR);
 }
 
 // Provide a test case for uart initialization function above
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
-	printf("\nHello");
-	UART_HANDLE uart;
-	init_uart(&uart);
-	print_uart_registers(&uart);
+  printf("\nHello");
+  UART_HANDLE uart;
+  init_uart(&uart);
+  print_uart_registers(&uart);
 }
