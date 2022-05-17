@@ -65,6 +65,7 @@
 #define BRR_STOP_BITS_MASK     0xF000
 
 #define ENABLE_HW_FLOW_CTRL          8
+#define STOP_BITS                    12
 #define ENABLE                       1
 #define DISABLE                      0
 // Data structure containing UART parameters including base address and other settings.
@@ -117,6 +118,10 @@ typedef enum
   PARITY_NONE = 0x0020,      //  2
 }Parity;
 
+typedef int error;
+
+// UART_HANDLE is passed and not global
+// Device may have multiple UART modules
 void set_baud_rate(UART_HANDLE *h, uint32_t baud)
 {
   uint8_t mask;
@@ -144,6 +149,13 @@ void enable_hw_flow_control(UART_HANDLE *h, uint8_t enable)
   // Typecasting to uint32 instead of passing a uint32
 }
 
+void set_stop_bits(UART_HANDLE *h, uint8_t stop_bits)
+{
+  h->BRR &= (~BRR_STOP_BITS_MASK);
+  h->BRR |= ((uint32_t)stop_bits << STOP_BITS);
+}
+
+
 void print_uart_registers(UART_HANDLE *h)
 {
   printf("\nBRR = 0x%x", h->BRR);
@@ -165,19 +177,31 @@ void stub_memwrite(uint32_t *mem_addr, uint32_t val)
 }
 
 // Fill this function
-void init_uart(UART_HANDLE *h)
+void init_uart(UART_HANDLE *h, uint32_t baud, uint8_t parity, uint8_t hwflow_ctrl, uint8_t stop_bits)
 {
   h->BRR = 0;
-  set_baud_rate(h, BAUD_115200);
-  set_parity(h, PARITY_NONE);
-  enable_hw_flow_control(h, ENABLE);
+  set_baud_rate(h, baud);
+  set_parity(h, parity);  enable_hw_flow_control(h, hwflow_ctrl);
+  set_stop_bits(h, stop_bits);
 }
+
 
 // Provide a test case for uart initialization function above
 int main(int argc, char *argv[])
 {
   printf("\nHello");
+  int error = 0;
+  error |= test_uart_init();
+  printf("\nTests Passed:");
+  printf("\ntest_uart_init()");
+}
+
+// Unit tests
+error test_uart_init()
+{
+  // Initializaion of uart in main() and printing BRR is 
+  // replaced with this uint test - lesser m/m allocation
   UART_HANDLE uart;
-  init_uart(&uart);
-  print_uart_registers(&uart);
+  init_uart(&uart, BAUD_115200, PARITY_NONE, ENABLE, 1);
+  return(uart.BRR == 0x1126);
 }
