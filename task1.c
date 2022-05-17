@@ -59,15 +59,18 @@
 //#define UART_BASE    (0xFC000000UL)
 //#define UART         ((UART_HANDLE*)UART_BASE)
 // Baud Rate Register masks
-#define BRR_BAUD_RATE_MASK     0x000F
-#define BRR_PARITY_MASK        0x0030
-#define BRR_HW_FLOW_CTRL_MASK  0x0100
-#define BRR_STOP_BITS_MASK     0xF000
+#define BRR_BAUD_RATE_MASK           0x000F
+#define BRR_PARITY_MASK              0x0030
+#define BRR_HW_FLOW_CTRL_MASK        0x0100
+#define BRR_STOP_BITS_MASK           0xF000
 
 #define ENABLE_HW_FLOW_CTRL          8
 #define STOP_BITS                    12
+#define ENABLE_TX                    23
 #define ENABLE                       1
 #define DISABLE                      0
+
+
 // Data structure containing UART parameters including base address and other settings.
 typedef struct UART_HANDLE
 {
@@ -155,6 +158,10 @@ void set_stop_bits(UART_HANDLE *h, uint8_t stop_bits)
   h->BRR |= ((uint32_t)stop_bits << STOP_BITS);
 }
 
+void transmit_enable(UART_HANDLE *h, uint8_t enable)
+{
+  h->TER |= ((uint32_t)enable << ENABLE_TX);
+}
 
 void print_uart_registers(UART_HANDLE *h)
 {
